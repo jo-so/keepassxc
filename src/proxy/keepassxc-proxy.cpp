@@ -26,13 +26,6 @@
 #include <unistd.h>
 
 // (C) Gist: https://gist.github.com/azadkuh/a2ac6869661ebd3f8588
-void ignoreUnixSignals(std::initializer_list<int> ignoreSignals)
-{
-    for (int sig : ignoreSignals) {
-        signal(sig, SIG_IGN);
-    }
-}
-
 void catchUnixSignals(std::initializer_list<int> quitSignals)
 {
     auto handler = [](int sig) -> void {
