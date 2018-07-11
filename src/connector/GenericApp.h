@@ -22,7 +22,6 @@
 
 class GenericApp : public AppBase
 {
-public:
     enum class Action {
         Databasehash,
         GeneratePassword,
@@ -32,14 +31,14 @@ public:
         Ping
     };
 
-    GenericApp(Action);
-    virtual bool start();
+public:
+    virtual bool start(const QStringList&);
 
 private slots:
     void handleResponse(QByteArray);
 
 private:
-    const Action m_action;
+    Action m_action;
 };
 
 #endif /* GENERICAPP_H_ */

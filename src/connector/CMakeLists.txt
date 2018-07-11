@@ -21,6 +21,7 @@ if(WITH_XC_BROWSER)
     set(connector_SOURCES
       keepassxc-connector.cpp
       AppBase.cpp
+      GitApp.cpp
       GenericApp.cpp
       ProxyApp.cpp
       )

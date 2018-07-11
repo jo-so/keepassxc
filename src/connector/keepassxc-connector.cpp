@@ -18,14 +18,13 @@
 */
 
 #include "GenericApp.h"
+#include "GitApp.h"
 #include "ProxyApp.h"
 
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QProcessEnvironment>
-
-#include <iostream>
 
 #ifndef Q_OS_WIN
 # include <initializer_list>
@@ -35,11 +34,6 @@
 // (C) Gist: https://gist.github.com/azadkuh/a2ac6869661ebd3f8588
 void catchUnixSignals(std::initializer_list<int> quitSignals)
 {
-    auto handler = [](int sig) -> void {
-        (void)sig;
-        QCoreApplication::quit();
-    };
-
     sigset_t blocking_mask;
     sigemptyset(&blocking_mask);
     for (auto sig : quitSignals) {
@@ -47,37 +41,18 @@ void catchUnixSignals(std::initializer_list<int> quitSignals)
     }
 
     struct sigaction sa;
-    sa.sa_handler = handler;
     sa.sa_mask = blocking_mask;
     sa.sa_flags = 0;
+    sa.sa_handler = [](int sig) -> void {
+        (void)sig;
+        QCoreApplication::quit();
+    };
 
     for (auto sig : quitSignals) {
         sigaction(sig, &sa, nullptr);
     }
 }
 #endif
-
-/*
-void print_quit(QJsonObject obj)
-{
-    auto error_code = obj["errorCode"];
-    if (!error_code.isUndefined()) {
-        qDebug() << obj;
-        goto end;
-    }
-
-    auto action = obj["action"].toString();
-    if (action == "get-databasehash") {
-        qDebug().nospace() << "Hash: " << obj["hash"] << ", Version: " << obj["version"];
-    } else if (action == "change-public-keys") {
-    } else {
-        qCritical() << "Unexpected action:" << obj;
-    }
-
-end:
-    QCoreApplication::quit();
-}
-*/
 
 int main(int argc, char* argv[])
 {
@@ -86,6 +61,7 @@ int main(int argc, char* argv[])
     // git-credential-keepassxc [-i identity-file] get|store|erase
     // pinentry-keepassxc [-i identity-file]
     // askpass-keepassxc [-i identity-file]
+
     QCoreApplication app(argc, argv);
     app.setApplicationName("keepassxc-connector");
 
@@ -121,7 +97,7 @@ int main(int argc, char* argv[])
 
         if (arg_m == "askpass") {
             mode = askpass;
-        } else if (arg_m == "git-credential") {
+        } else if (arg_m == "git" || arg_m == "git-credential") {
             mode = git;
         } else if (arg_m == "pinentry") {
             mode = pinentry;
@@ -134,60 +110,18 @@ int main(int argc, char* argv[])
     }
 
     QScopedPointer<AppBase> handler;
-    const auto args = parser.positionalArguments();
-
     if (mode == proxy) {
         handler.reset(new ProxyApp());
-/*
     } else if (mode == git) {
-        if (args.isEmpty()) {
-            qCritical() << "No action given. Please provide an action as argument";
-            return 1;
-        }
-
-        GitApp::Action act;
-        if (args.first() == "get") {
-            act = GitApp::Mode::Get;
-        } else if (args.first() == "store") {
-            act = GitApp::Mode::Store;
-        } else if (args.first() == "erase") {
-            act = GitApp::Mode::Erase;
-        } else {
-            qCritical() << "Invalid action:" << args.first();
-            return 1;
-        }
-
-        handler = new GitApp(id_path, act);
+        handler.reset(new GitApp());
+/*
     } else if (mode == pinentry) {
-        // TODO: listen for pinentry commands
+        handler.reset(new PinentryApp());
     } else if (mode == askpass) {
-        // TODO: std::cout << kpxc.getLogins().first().password();
+        handler.reset(new AskpassApp());
 */
     } else {
-        if (args.isEmpty()) {
-            qCritical() << "No action given. Please provide an action as argument";
-            return 1;
-        }
-
-        GenericApp::Action act;
-        if (args.first() == "dbhash") {
-            act = GenericApp::Action::Databasehash;
-        } else if (args.first() == "genpwd") {
-            act = GenericApp::Action::GeneratePassword;
-        } else if (args.first() == "get") {
-            act = GenericApp::Action::Get;
-        } else if (args.first() == "init") {
-            act = GenericApp::Action::Init;
-        } else if (args.first() == "lockdb") {
-            act = GenericApp::Action::LockDatabase;
-        } else if (args.first() == "ping") {
-            act = GenericApp::Action::Ping;
-        } else {
-            qCritical() << "Invalid action:" << args.first();
-            return 1;
-        }
-
-        handler.reset(new GenericApp(act));
+        handler.reset(new GenericApp());
     }
 
     if (parser.isSet("i"))
@@ -200,7 +134,7 @@ int main(int argc, char* argv[])
             handler->setIdPath(AppBase::default_id_path());
     }
 
-    if (!handler->start())
+    if (!handler->start(parser.positionalArguments()))
         return 1;
 
 #if defined(Q_OS_UNIX) || defined(Q_OS_LINUX)

@@ -263,7 +263,7 @@ bool AppBase::generatePassword()
 bool AppBase::getLogins(const QString& url)
 {
     return send("get-logins", {
-      {"url", "https://abc.de/"},
+      {"url", url},
 //      {"submitUrl", ""},
       {"keys", QJsonArray {
 //          {{"id", }, {"key", }}

@@ -31,7 +31,7 @@ public:
     QString idPath() const { return m_idPath; }
     void setIdPath(const QString& val) { m_idPath = val; }
 
-    virtual bool start() =0;
+    virtual bool start(const QStringList&) =0;
 
 protected:
     bool loadIdentity();

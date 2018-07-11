@@ -22,17 +22,36 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <iostream>
-#include <sodium.h>
-#include <sodium/crypto_box.h>
-#include <sodium/randombytes.h>
 
-GenericApp::GenericApp(Action act)
-    : m_action(act)
+bool GenericApp::start(const QStringList& args)
 {
-}
+    if (args.isEmpty()) {
+        qCritical() << "No action given. Please provide an action as argument";
+        return false;
+    }
 
-bool GenericApp::start()
-{
+    if (args.first() == "dbhash") {
+        m_action = Action::Databasehash;
+    } else if (args.first() == "genpwd") {
+        m_action = Action::GeneratePassword;
+    } else if (args.first() == "get") {
+        if (args.length() < 2) {
+            qCritical() << "Missing URL to filter as second argument";
+            return false;
+        }
+
+        m_action = Action::Get;
+    } else if (args.first() == "init") {
+        m_action = Action::Init;
+    } else if (args.first() == "lockdb") {
+        m_action = Action::LockDatabase;
+    } else if (args.first() == "ping") {
+        m_action = Action::Ping;
+    } else {
+        qCritical() << "Invalid action:" << args.first();
+        return false;
+    }
+
     if (m_action != Action::Init) {
         if (!loadIdentity()) {
             qCritical().noquote() << "Failed to load the identity from "
@@ -41,10 +60,12 @@ bool GenericApp::start()
         }
     }
 
-    if (!connectToServer())
-        return false;
-
     connect(this, &AppBase::responseReceived, this, &GenericApp::handleResponse);
+
+    if (!connectToServer()) {
+        disconnect(this, &AppBase::responseReceived, this, &GenericApp::handleResponse);
+        return false;
+    }
 
     switch (m_action) {
     case Action::Databasehash:
@@ -58,7 +79,7 @@ bool GenericApp::start()
         break;
 
     case Action::Get:
-        if (getLogins(""))
+        if (getLogins(args.at(1)))
             return true;
         break;
 
@@ -78,7 +99,8 @@ bool GenericApp::start()
         break;
 
     default:
-        qFatal("Unexpected m_action: %u", static_cast<unsigned>(m_action));
+        qFatal("%s Unexpected m_action: %u", __PRETTY_FUNCTION__,
+          static_cast<unsigned>(m_action));
         Q_UNREACHABLE();
     }
 
@@ -91,7 +113,8 @@ void GenericApp::handleResponse(QByteArray data)
 {
     auto json(QJsonDocument::fromJson(data));
     if (!json.isObject()) {
-        qFatal("Received an unexpected answer from KeePassXC: %s", data.constData());
+        qFatal("%s Received an unexpected answer from KeePassXC: %s",
+          __PRETTY_FUNCTION__, data.constData());
         Q_UNREACHABLE();
     }
 
@@ -104,38 +127,59 @@ void GenericApp::handleResponse(QByteArray data)
         return;
     }
 
+    const auto act = obj["action"].toString();
     switch (m_action) {
     case Action::Databasehash:
-        Q_ASSERT(obj["action"] == "get-databasehash");
+        Q_ASSERT(act == "get-databasehash");
         Q_ASSERT(obj.contains("message"));
         std::cout << extractMessage(obj).value("hash").toString().toStdString() << std::endl;
         break;
 
     case Action::GeneratePassword:
-        Q_ASSERT(obj["action"] == "generate-password");
+        Q_ASSERT(act == "generate-password");
         Q_ASSERT(obj.contains("message"));
         std::cout << extractMessage(obj)
             .value("entries").toArray().first().toObject()
             .value("password").toString().toStdString() << std::endl;
         break;
 
+    case Action::Get:
+        Q_ASSERT(act == "get-logins");
+        for (auto entry : extractMessage(obj).value("entries").toArray()) {
+            const auto o = entry.toObject();
+            const auto sep = "\t";
+            std::cout << o["name"].toString().toStdString()
+                      << sep << o["login"].toString().toStdString()
+                      << sep << o["password"].toString().toStdString()
+                      << std::endl;
+        }
+        break;
+
     case Action::Init:
-        Q_ASSERT(obj["action"] == "change-public-keys");
-        {
+        if (act == "change-public-keys") {
             auto pk(obj["publicKey"].toString());
             Q_ASSERT(!pk.isNull());
             qDebug() << "KeePassXC's public key:" << pk;
             setRemotePublicKey(pk);
-        }
 
-        if (!storeIdentity())
-            qCritical().noquote() << "Failed to initialize the identity storage"
-                                  << idPath();
+            associate();
+            return;
+        } else if (act == "associate") {
+            qDebug() << extractMessage(obj);
+
+            if (!storeIdentity())
+                qCritical().noquote() << "Failed to initialize the identity storage"
+                                      << idPath();
+        } else {
+            qFatal("%s Unexpected action: %s", __PRETTY_FUNCTION__,
+              act.toUtf8().constData());
+            Q_UNREACHABLE();
+        }
 
         break;
 
     case Action::LockDatabase:
-        Q_ASSERT(obj["action"] == "lock-database");
+        Q_ASSERT(act == "lock-database");
         std::cout << "KeePassXC database locked" << std::endl;
         break;
 
@@ -145,7 +189,8 @@ void GenericApp::handleResponse(QByteArray data)
         break;
 
     default:
-        qFatal("Unexpected m_action: %u", static_cast<unsigned>(m_action));
+        qFatal("%s Unexpected m_action: %u", __PRETTY_FUNCTION__,
+          static_cast<unsigned>(m_action));
         Q_UNREACHABLE();
     }
 

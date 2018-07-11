@@ -26,7 +26,7 @@ class ProxyApp : public AppBase
 {
 public:
     ProxyApp();
-    virtual bool start();
+    virtual bool start(const QStringList&);
 
 private slots:
     void handleResponse(QByteArray);

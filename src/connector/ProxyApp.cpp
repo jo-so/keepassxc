@@ -29,8 +29,9 @@ ProxyApp::ProxyApp()
     m_cin_notifier.setEnabled(false);
 }
 
-bool ProxyApp::start()
+bool ProxyApp::start(const QStringList& args)
 {
+    (void)args;
     connect(this, &AppBase::responseReceived, this, &ProxyApp::handleResponse);
 
     if (!connectToServer()) {

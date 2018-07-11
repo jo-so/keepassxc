@@ -15,54 +15,23 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef GITAPP_H
-#define GITAPP_H
+#ifndef GITAPP_H_
+#define GITAPP_H_
 
-class GitApp : App
+#include "AppBase.h"
+
+class GitApp : public AppBase
 {
-public:
     enum class Action { Get, Store, Erase };
 
-    GitApp(QString&, Action);
+public:
+    virtual bool start(const QStringList&);
+
+private slots:
+    void handleResponse(QByteArray);
 
 private:
     Action m_action;
 };
 
-#endif // GITAPP_H
-
-GitApp::GitApp(QString& id_path, Action action)
-    : App(id_path), m_action(action)
-{
-}
-
-bool GitApp::init()
-{
-    if (!load_identity())
-        return false;
-
-    if (!connect())
-        return false;
-
-    // TODO:
-    // https://stackoverflow.com/questions/6878507/using-qsocketnotifier-to-select-on-a-char-device/7389622#7389622
-    // QSocketNotifier stdin_notifier(fileno(stdin), QSocketNotifier::Read);
-    switch (m_action) {
-    case Action::Get:
-        // connect(stdin_notifier.data(), SIGNAL(activated(int)), this, SLOT(text()));
-        // TODO: wait for std::cin; split_lines()
-        break;
-
-    case Action::Store:
-        // TODO: wait for std::cin; split_lines()
-        break;
-
-    case Action::Erase:
-        // TODO: wait for std::cin; split_lines()
-        break;
-
-    default:
-        qFatal("Unexpected m_action: %d", m_action);
-        break;
-    }
-}
+#endif /* GITAPP_H_ */
