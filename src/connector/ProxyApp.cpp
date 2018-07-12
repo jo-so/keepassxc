@@ -68,12 +68,11 @@ void ProxyApp::handleInput(int socket)
 
     quint32 length = 0;
     std::cin.read(reinterpret_cast<char*>(&length), sizeof(length));
-    qDebug() << length << "characters of input data on" << socket;
     if (length > 0) {
         QByteArray data(length, '\0');
         std::cin.read(data.data(), length);
         if (std::cin.good())
-            // cin didn't contain `length` characters
+            // else cin didn't contained `length` characters
             send(data);
     }
 }

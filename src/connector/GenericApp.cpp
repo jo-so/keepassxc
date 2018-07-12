@@ -132,7 +132,11 @@ void GenericApp::handleResponse(QByteArray data)
     case Action::Databasehash:
         Q_ASSERT(act == "get-databasehash");
         Q_ASSERT(obj.contains("message"));
-        std::cout << extractMessage(obj).value("hash").toString().toStdString() << std::endl;
+        {
+            const auto str = extractMessage(obj).value("hash").toString();
+            if (!str.isEmpty())
+                std::cout << str.toStdString() << std::endl;
+        }
         break;
 
     case Action::GeneratePassword:

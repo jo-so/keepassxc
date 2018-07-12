@@ -127,11 +127,8 @@ int main(int argc, char* argv[])
     if (parser.isSet("i"))
         handler->setIdPath(parser.value("i"));
     else {
-        const auto env(QProcessEnvironment::systemEnvironment());
-        if (env.contains("KEEPASSXC_ID"))
-            handler->setIdPath(env.value("KEEPASSXC_ID"));
-        else
-            handler->setIdPath(AppBase::default_id_path());
+        const auto val = QProcessEnvironment::systemEnvironment().value("KEEPASSXC_ID");
+        handler->setIdPath(val.isEmpty() ? AppBase::default_id_path() : val);
     }
 
     if (!handler->start(parser.positionalArguments()))
@@ -140,5 +137,6 @@ int main(int argc, char* argv[])
 #if defined(Q_OS_UNIX) || defined(Q_OS_LINUX)
     catchUnixSignals({SIGQUIT, SIGINT, SIGTERM, SIGHUP});
 #endif
+
     return app.exec();
 }

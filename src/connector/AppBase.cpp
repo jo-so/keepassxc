@@ -126,7 +126,7 @@ QJsonObject AppBase::decryptMessage(const QString& data, const QString& nonce)
         reinterpret_cast<const unsigned char*>(nonce_val.constData()),
         reinterpret_cast<const unsigned char*>(remote_pubkey_val.constData()),
         reinterpret_cast<const unsigned char*>(my_seckey_val.constData())) != 0) {
-        qDebug() << "decrypt of message failed";
+        qDebug() << "decryption of message failed";
         return QJsonObject();
     }
 
@@ -225,6 +225,7 @@ bool AppBase::send(const QString& action,
     return send(msg);
 }
 
+// https://github.com/keepassxreboot/keepassxc-browser/blob/develop/keepassxc-protocol.md
 bool AppBase::changePublicKeys()
 {
     return send({
